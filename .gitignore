@@ -6,3 +6,7 @@ __pycache__
 
 # VS Code configuration
 /.vscode/
+
+/target/
+/dist/
+/.venv/

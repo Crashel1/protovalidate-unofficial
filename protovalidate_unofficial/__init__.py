@@ -16,6 +16,8 @@ from protovalidate_unofficial import validator
 
 Validator = validator.Validator
 CompilationError = validator.CompilationError
+EvaluationError = validator.EvaluationError
+Violation = validator.Violation
 ValidationError = validator.ValidationError
 Violations = validator.Violations
 
@@ -23,4 +25,4 @@ _default_validator = Validator()
 validate = _default_validator.validate
 collect_violations = _default_validator.collect_violations
 
-__all__ = ["CompilationError", "ValidationError", "Validator", "Violations", "collect_violations", "validate"]
+__all__ = ["EvaluationError", "Violation", "CompilationError", "ValidationError", "Validator", "Violations", "collect_violations", "validate"]

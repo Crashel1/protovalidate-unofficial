@@ -1,53 +1,59 @@
 name: Upload PyPI Release
-
 on:
   release:
     types: [published]
-
+permissions:
+  contents: read
 jobs:
+  verify:
+    uses: ./.github/workflows/ci.yaml
   build:
-    name: Build package
-    runs-on: ubuntu-latest
-    environment:
-      name: release
+    needs: verify
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            manylinux: 2_28
+          - runner: ubuntu-24.04-arm
+            manylinux: 2_28
+          - runner: macos-15
+            manylinux: auto
+          - runner: windows-2025
+            manylinux: auto
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
-          fetch-depth: 0
-      - name: Set VERSION variable from tag
-        run: |
-          VERSION=${{github.head_ref}}
-          echo "VERSION=${VERSION##*/}" >> $GITHUB_ENV
-      - uses: astral-sh/setup-uv@v7
-      - name: Build release
-        run: |
-          uv build
+          python-version: '3.11'
+      - name: Build wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          args: --release --out dist -i 3.11 -j 2
+          manylinux: ${{ matrix.manylinux }}
+      - name: Build source package
+        if: matrix.runner == 'ubuntu-24.04'
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
       - uses: actions/upload-artifact@v5
         with:
-          name: package
+          name: release-${{ matrix.runner }}
           path: dist/
-
   publish:
-    name: Publish on PyPI
-    runs-on: ubuntu-latest
+    needs: build
+    runs-on: ubuntu-24.04
     environment:
       name: release
     permissions:
-      # IMPORTANT: this permission is mandatory for Trusted Publishing
       id-token: write
-    needs: build
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v6
+      - uses: actions/download-artifact@v6
         with:
-          fetch-depth: 0
-
-      - name: Download built artifact
-        uses: actions/download-artifact@v6
-        with:
-          name: package
+          pattern: release-*
+          merge-multiple: true
           path: dist
-
       - name: Publish on PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
