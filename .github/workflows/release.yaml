@@ -2,10 +2,17 @@ name: Upload PyPI Release
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag with built packages
+        required: true
+        type: string
 permissions:
   contents: read
 jobs:
   verify:
+    if: github.event_name == 'release'
     uses: ./.github/workflows/ci.yaml
   build:
     needs: verify
@@ -43,6 +50,7 @@ jobs:
           name: release-${{ matrix.runner }}
           path: dist/
   publish:
+    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || needs.build.result == 'success') }}
     needs: build
     runs-on: ubuntu-24.04
     environment:
@@ -50,7 +58,25 @@ jobs:
     permissions:
       id-token: write
     steps:
+      - uses: actions/checkout@v6
+        if: github.event_name == 'workflow_dispatch'
+      - uses: astral-sh/setup-uv@v7
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          python-version: '3.8'
+      - name: Verify built release packages
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir dist --pattern '*.whl' --pattern '*.tar.gz'
+          uv venv --python 3.8
+          uv pip install --resolution highest dist/*.whl 'pytest>=8.3'
+          cd /tmp
+          PYTHONPATH="$GITHUB_WORKSPACE/gen" "$GITHUB_WORKSPACE/.venv/bin/python" -m pytest --import-mode=importlib "$GITHUB_WORKSPACE/test"
       - uses: actions/download-artifact@v6
+        if: github.event_name == 'release'
         with:
           pattern: release-*
           merge-multiple: true

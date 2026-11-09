@@ -41,6 +41,6 @@ jobs:
       - name: Install and test wheel
         run: |
           uv venv --python ${{ matrix.python }}
-          uv pip install dist/*.whl pytest
+          uv pip install --resolution highest dist/*.whl 'pytest>=8.3'
           cd /tmp
           PYTHONPATH="$GITHUB_WORKSPACE/gen" "$GITHUB_WORKSPACE/.venv/bin/python" -m pytest --import-mode=importlib "$GITHUB_WORKSPACE/test"
