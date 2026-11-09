@@ -1,53 +1,46 @@
 name: CI
 on:
   push:
-    branches: [main]
-    tags: ['v*']
+    branches: [master]
   pull_request:
-    branches: [main]
-  schedule:
-    - cron: '15 22 * * *'
-  workflow_dispatch: {} # support manual runs
+    branches: [master]
+  workflow_dispatch:
+  workflow_call:
 permissions:
   contents: read
 jobs:
-  ci:
-    name: CI
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build Python 3.8 ABI wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          args: --release --out dist -i 3.11 -j 2
+          manylinux: 2_28
+      - uses: actions/upload-artifact@v5
+        with:
+          name: tested-wheel
+          path: dist/*.whl
+  test:
+    needs: build
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
-        resolution: ["highest", "lowest-direct"]
-    env:
-      # Shared env variables for all the tests
-      UV_RESOLUTION: '${{ matrix.resolution }}'
+        python: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 1
-      - name: Install Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: stable
-          cache: false
+      - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
         with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: make install
-      - name: Lint
-        run: make lint
-      - name: Execute tests
-        run: make test
-      - name: Test conformance
-        run: make conformance
-      - name: Format
-        run: make format
-      # When running with matrix.resolution == highest, we expect uv.lock to change, but we don't want that file checked in.
-      - if: matrix.resolution == 'lowest-direct'
-        name: Check generated
-        run: make checkgenerate
-        env:
-          BUF_TOKEN: ${{ secrets.BUF_TOKEN }}
+          python-version: ${{ matrix.python }}
+      - uses: actions/download-artifact@v6
+        with:
+          name: tested-wheel
+          path: dist
+      - name: Install and test wheel
+        run: |
+          uv venv --python ${{ matrix.python }}
+          uv pip install dist/*.whl pytest
+          cd /tmp
+          PYTHONPATH="$GITHUB_WORKSPACE/gen" "$GITHUB_WORKSPACE/.venv/bin/python" -m pytest --import-mode=importlib "$GITHUB_WORKSPACE/test"

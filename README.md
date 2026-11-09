@@ -1,117 +1,58 @@
-[![The Buf logo](https://raw.githubusercontent.com/bufbuild/protovalidate/main/.github/buf-logo.svg)][buf]
+# protovalidate-unofficial 2.1.0
 
-# protovalidate-python
+This package uses the official Protovalidate 2.1.0 Rust and CEL core. It supports
+CPython 3.8 and later through a `cp38-abi3` native extension.
 
-[![CI](https://github.com/bufbuild/protovalidate-python/actions/workflows/ci.yaml/badge.svg)](https://github.com/bufbuild/protovalidate-python/actions/workflows/ci.yaml)
-[![PyPI version](https://img.shields.io/pypi/v/protovalidate)](https://pypi.org/project/protovalidate)
-
-[Protovalidate][protovalidate] is the semantic validation library for Protobuf. It provides standard annotations to validate common rules on messages and fields, as well as the ability to use [CEL][cel] to write custom rules. It's the next generation of [protoc-gen-validate][protoc-gen-validate].
-
-With Protovalidate, you can annotate your Protobuf messages with both standard and custom validation rules:
-
-```protobuf
-syntax = "proto3";
-
-package acme.user.v1;
-
-import "buf/validate/validate.proto";
-
-message User {
-  string id = 1 [(buf.validate.field).string.uuid = true];
-  uint32 age = 2 [(buf.validate.field).uint32.lte = 150]; // We can only hope.
-  string email = 3 [(buf.validate.field).string.email = true];
-  string first_name = 4 [(buf.validate.field).string.max_len = 64];
-  string last_name = 5 [(buf.validate.field).string.max_len = 64];
-
-  option (buf.validate.message).cel = {
-    id: "first_name_requires_last_name"
-    message: "last_name must be present if first_name is present"
-    expression: "!has(this.first_name) || has(this.last_name)"
-  };
-}
+```sh
+pip install protovalidate-unofficial==2.1.0
 ```
 
-Once you've added `protovalidate` to your project, validation is idiomatic Python:
+Use the same import as version 1:
 
 ```python
+import protovalidate_unofficial as protovalidate
+
 try:
     protovalidate.validate(message)
-except protovalidate.ValidationError as e:
-    # Handle failure.
+except protovalidate.ValidationError as error:
+    violations = error.to_proto()
 ```
 
-## Installation
+`Validator`, `validate`, `collect_violations`, `ValidationError`, `CompilationError`,
+and `Violations` remain available. Reuse a `Validator` to cache compiled rules.
+`fail_fast=True` stops after the first violation.
 
-> [!TIP]
-> The easiest way to get started with Protovalidate for RPC APIs are the quickstarts in Buf's documentation. There's one available for [Python and gRPC][grpc-python].
+This backport accepts `google.protobuf` messages. It does not require or support
+`protobuf-py`. Standard rules run in Rust. Custom CEL rules run in the bundled
+CEL engine. Validation remains enabled.
 
-To install the package, use `pip`:
+Version 2 follows the official 2.1.0 rule semantics. `EvaluationError` reports a
+failed CEL evaluation. Error text and violation order can differ from version 1.
+Violation objects keep `proto`, `field_value`, and `rule_value`. Their `proto`
+is a `google.protobuf` message.
 
-```shell
-pip install protovalidate
+## Build and test
+
+Install Rust 1.88 or later and a C++17 compiler. Use a current Clang or GCC.
+The source package contains the fixed native dependencies; no git submodule
+checkout is required.
+
+```sh
+uv tool run --from maturin maturin build --release -i python3.8
+uv pip install target/wheels/protovalidate_unofficial-2.1.0-*.whl pytest
+PYTHONPATH=gen python -m pytest
 ```
 
-## Documentation
+Prebuilt wheels do not require a compiler at installation time.
 
-Comprehensive documentation for Protovalidate is available at [protovalidate.com][protovalidate].
+See [UPSTREAM.md](UPSTREAM.md) for source versions and licenses.
 
-Highlights for Python developers include:
+## Verification
 
-* The [developer quickstart][quickstart]
-* A comprehensive RPC quickstart for [Python and gRPC][grpc-python]
-* A [migration guide for protoc-gen-validate][migration-guide] users
+The same wheel passes the behavior tests on CPython 3.8 through 3.14. Python 3.8
+also passes with the minimum `protobuf==3.20.3` dependency. The Protobuf
+conformance harness passes 2,854 cases without skips.
 
-## Additional languages and repositories
-
-Protovalidate isn't just for Python! You might be interested in sibling repositories for other languages:
-
-- [`protovalidate-go`][pv-go] (Go)
-- [`protovalidate-java`][pv-java] (Java)
-- [`protovalidate-cc`][pv-cc] (C++)
-- [`protovalidate-es`][pv-es] (TypeScript and JavaScript)
-
-Additionally, [protovalidate's core repository](https://github.com/bufbuild/protovalidate) provides:
-
-- [Protovalidate's Protobuf API][validate-proto]
-- [Conformance testing utilities][conformance] for acceptance testing of `protovalidate` implementations
-
-## Contributing
-
-We genuinely appreciate any help! If you'd like to contribute, check out these resources:
-
-- [Contributing Guidelines][contributing]: Guidelines to make your contribution process straightforward and meaningful
-- [Conformance testing utilities](https://github.com/bufbuild/protovalidate/tree/main/docs/conformance.md): Utilities providing acceptance testing of `protovalidate` implementations
-
-## Legal
-
-Offered under the [Apache 2 license][license].
-
-[buf]: https://buf.build
-[cel]: https://cel.dev
-
-[pv-go]: https://github.com/bufbuild/protovalidate-go
-[pv-java]: https://github.com/bufbuild/protovalidate-java
-[pv-python]: https://github.com/bufbuild/protovalidate-python
-[pv-cc]: https://github.com/bufbuild/protovalidate-cc
-[pv-es]: https://github.com/bufbuild/protovalidate-es
-
-[buf-mod]: https://buf.build/bufbuild/protovalidate
-[license]: LICENSE
-[contributing]: .github/CONTRIBUTING.md
-
-[protoc-gen-validate]: https://github.com/bufbuild/protoc-gen-validate
-
-[protovalidate]: https://protovalidate.com
-[quickstart]: https://protovalidate.com/quickstart/
-[connect-go]: https://protovalidate.com/quickstart/connect-go/
-[grpc-go]: https://protovalidate.com/quickstart/grpc-go/
-[grpc-java]: https://protovalidate.com/quickstart/grpc-java/
-[grpc-python]: https://protovalidate.com/quickstart/grpc-python/
-[migration-guide]: https://protovalidate.com/migration-guides/migrate-from-protoc-gen-validate/
-[conformance-executable]: ./internal/cmd/protovalidate-conformance-go/README.md
-[pkg-go]: https://pkg.go.dev/github.com/bufbuild/protovalidate-go
-
-[validate-proto]: https://buf.build/bufbuild/protovalidate/docs/main:buf.validate
-[conformance]: https://github.com/bufbuild/protovalidate/blob/main/docs/conformance.md
-[examples]: https://github.com/bufbuild/protovalidate/tree/main/examples
-[migrate]: https://protovalidate.com/migration-guides/migrate-from-protoc-gen-validate/
+Strict error classification has two upstream exceptions: CEL references to an
+unknown field and a wrong operand type raise `EvaluationError`, instead of
+`CompilationError`. Both messages are rejected.

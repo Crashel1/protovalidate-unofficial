@@ -18,7 +18,7 @@ import pytest
 from google.protobuf import message
 
 import protovalidate_unofficial as protovalidate
-from gen.tests.example.v1 import validations_pb2
+from tests.example.v1 import validations_pb2
 from protovalidate_unofficial.internal import rules
 
 validators: list[protovalidate.Validator] = [
@@ -33,7 +33,7 @@ def test_ninf(validator):
     msg.val = float("-inf")
 
     expected_violation = rules.Violation()
-    expected_violation.proto.message = "value must be finite"
+    expected_violation.proto.message = "must be finite"
     expected_violation.proto.rule_id = "double.finite"
     expected_violation.field_value = msg.val
     expected_violation.rule_value = True
@@ -47,7 +47,7 @@ def test_map_key(validator):
     msg.val[1] = "a"
 
     expected_violation = rules.Violation()
-    expected_violation.proto.message = "value must be less than 0"
+    expected_violation.proto.message = "must be less than 0"
     expected_violation.proto.rule_id = "sint64.lt"
     expected_violation.proto.for_key = True
     expected_violation.field_value = 1
@@ -109,7 +109,7 @@ def test_protovalidate_oneof_unknown_field_name(validator):
     msg = validations_pb2.ProtovalidateOneofUnknownFieldName()
 
     check_compilation_errors(
-        validator, msg, 'field "xxx" not found in message tests.example.v1.ProtovalidateOneofUnknownFieldName'
+        validator, msg, 'field xxx not found in message tests.example.v1.ProtovalidateOneofUnknownFieldName'
     )
 
 
@@ -149,13 +149,13 @@ def test_multiple_validations(validator):
     msg.name = "blah"
 
     expected_violation1 = rules.Violation()
-    expected_violation1.proto.message = "value does not have prefix `foo`"
+    expected_violation1.proto.message = "does not have prefix `foo`"
     expected_violation1.proto.rule_id = "string.prefix"
     expected_violation1.field_value = msg.title
     expected_violation1.rule_value = "foo"
 
     expected_violation2 = rules.Violation()
-    expected_violation2.proto.message = "value length must be at least 5 characters"
+    expected_violation2.proto.message = "must be at least 5 characters"
     expected_violation2.proto.rule_id = "string.min_len"
     expected_violation2.field_value = msg.name
     expected_violation2.rule_value = 5
@@ -181,7 +181,7 @@ def test_fail_fast(validator):
     msg.name = "blah"
 
     expected_violation = rules.Violation()
-    expected_violation.proto.message = "value does not have prefix `foo`"
+    expected_violation.proto.message = "does not have prefix `foo`"
     expected_violation.proto.rule_id = "string.prefix"
     expected_violation.field_value = msg.title
     expected_violation.rule_value = "foo"

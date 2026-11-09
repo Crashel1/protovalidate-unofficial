@@ -1,6 +1,6 @@
 [build-system]
-requires = ["hatchling", "hatch-vcs"]
-build-backend = "hatchling.build"
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
 
 [project]
 name = "protovalidate-unofficial"
@@ -22,25 +22,13 @@ classifiers = [
   "Operating System :: OS Independent",
   "Typing :: Typed",
 ]
-dynamic = ["version"]
-dependencies = [
-    "protobuf>=3.20",
-    "cel-python==0.2.*",
-    # We need at least this version, which started publishing wheels for Python 3.14.
-    # Ref: https://github.com/google/re2/issues/580
-    "google-re2>=1.1.20251105; python_version == '3.14'",
-    # We need at least this version, which started publishing wheels for Python 3.13.
-    # Ref: https://github.com/google/re2/issues/516
-    "google-re2>=1.1.20250722; python_version == '3.13'",
-    # 1.1 started supporting 3.12.
-    "google-re2>=1.1; python_version == '3.12'",
-    "google-re2>=1,<=1.1.20240702; python_version < '3.10'",
-]
+version = "2.1.0"
+dependencies = ["protobuf>=3.20.3"]
 
 [project.urls]
-Homepage = "https://github.com/bufbuild/protovalidate-python"
-Source = "https://github.com/bufbuild/protovalidate-python"
-Issues = "https://github.com/bufbuild/protovalidate-python/issues"
+Homepage = "https://github.com/Crashel1/protovalidate-unofficial"
+Source = "https://github.com/Crashel1/protovalidate-unofficial"
+Issues = "https://github.com/Crashel1/protovalidate-unofficial/issues"
 
 [dependency-groups]
 dev = [
@@ -57,9 +45,17 @@ dev = [
 [tool.uv]
 resolution = "lowest-direct"
 
-[tool.hatch.version]
-source = "vcs"
-raw-options = { fallback_version = "0.0.0" }
+[tool.maturin]
+module-name = "protovalidate_unofficial._protovalidate"
+python-source = "."
+python-packages = ["protovalidate_unofficial", "buf"]
+features = ["pyo3/extension-module", "pyo3/abi3-py38"]
+include = [
+  { path = "crates/**/*", format = "sdist" },
+  { path = "build.rs", format = "sdist" },
+  { path = "UPSTREAM.md", format = "sdist" },
+  { path = "scripts/generate_schema.py", format = "sdist" },
+]
 
 [tool.ruff]
 line-length = 120
